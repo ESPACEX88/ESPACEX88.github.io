@@ -1,0 +1,483 @@
+
+<!doctype html> 
+<html lang="en"> 
+<head> 
+    <meta charset="UTF-8" />
+    <title>Making your first Phaser 3 Game - Part 10</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.55.2/phaser.min.js"></script>
+    <script src="//cdn.jsdelivr.net/npm/phaser@3.11.0/dist/phaser.js"></script>
+    <style type="text/css">
+        body {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+    <audio src="assets/music5.m4a" autoplay loop></audio>
+    
+
+<script type="text/javascript">
+
+var config = {
+    type: Phaser.AUTO,
+    width: 1500,
+    height: 800,
+    physics: {
+        default: 'arcade',
+        arcade: {
+            gravity: { y: 300 },
+            debug: false
+        }
+    },
+    scene: {
+        preload: preload,
+        create: create,
+        update: update
+    }
+};
+
+var scoreText;
+var timerText;
+var timeElapsed = 0;
+var timerEvent;
+var level = 1;
+
+
+
+
+var player;
+var player2;
+var stars;
+var bombs;
+var platforms;
+var cursors;
+var score = 720;
+var gameOver = false;
+
+
+var game = new Phaser.Game(config);
+
+function preload()
+{
+    this.load.image('sky', 'assets/sky.png');
+    this.load.image('fondo', 'assets/fondo.png');
+    this.load.image('fondo2', 'assets/nivel2.png');
+    this.load.image('fondo3', 'assets/nivel3.png');
+    this.load.image('fondo4', 'assets/fondo4.png');
+    this.load.image('fondo5', 'assets/fondo5.jpg');
+    this.load.image('ground', 'assets/platform.png');
+    this.load.image('star', 'assets/star.png');
+    this.load.image('bomb', 'assets/bomb.png');
+    this.load.image('bomb2', 'assets/bomb2.png');
+    
+    this.load.spritesheet('personaje', 'assets/personaje.png', { frameWidth: 30.5, frameHeight: 42 });
+    this.load.spritesheet('personaje2', 'assets/dude.png', { frameWidth: 32, frameHeight: 44 });
+   
+
+    
+}
+var currentBackground;
+
+
+
+function create()
+{
+
+
+    
+  
+     // Crea el fondo inicial
+     currentBackground = this.add.image(550, 275, 'fondo5');
+    currentBackground.setDepth(-1);
+
+
+    player = this.physics.add.sprite(100, 450, 'personaje');
+    
+
+    player2 = this.physics.add.sprite(250, 450, 'personaje2');
+
+
+
+    
+
+    // The platforms group contains the ground and the 2 ledges we can jump on
+    platforms = this.physics.add.staticGroup();
+
+    // Here we create the ground.
+    // Scale it to fit the width of the game (the original sprite is 400x32 in size)
+    platforms.create(400, 568, 'ground').setScale(2).refreshBody();
+
+
+  
+    // Now let's create some ledges
+    platforms.create(600, 400, 'ground');
+    platforms.create(1100, 500, 'ground');
+    platforms.create(50, 250, 'ground');
+    platforms.create(750, 220, 'ground');
+
+  
+
+    // Player physics properties. Give the little guy a slight bounce.
+    player.setBounce(0.2);
+    player.setCollideWorldBounds(true);
+
+    player2.setBounce(0.2);
+    player2.setCollideWorldBounds(true);
+    
+    
+
+    // Our player animations, turning, walking left and walking right.
+    this.anims.create({
+        key: 'left',
+        frames: this.anims.generateFrameNumbers('personaje', { start: 0, end: 3 }),
+        frameRate: 10,
+        repeat: -1
+    });
+
+    this.anims.create({
+        key: 'turn',
+        frames: [{ key: 'personaje', frame: 4 }],
+        frameRate: 20
+    });
+
+    this.anims.create({
+        key: 'right',
+        frames: this.anims.generateFrameNumbers('personaje', { start: 5, end: 8 }),
+        frameRate: 10,
+        repeat: -1
+    });
+
+          // Our player animations, turning, walking left and walking right.
+    this.anims.create({
+        key: 'left2',
+        frames: this.anims.generateFrameNumbers('personaje2', { start: 0, end: 3 }),
+        frameRate: 10,
+        repeat: -1
+    });
+
+    this.anims.create({
+        key: 'turn2',
+        frames: [{ key: 'personaje2', frame: 4 }],
+        frameRate: 20
+    });
+
+    this.anims.create({
+        key: 'right2',
+        frames: this.anims.generateFrameNumbers('personaje2', { start: 5, end: 8 }),
+        frameRate: 10,
+        repeat: -1
+    });
+
+    
+    
+
+
+    // Input Events
+
+ 
+
+    // Input Events
+    cursors = this.input.keyboard.createCursorKeys();
+    
+    cursors2 = this.input.keyboard.addKeys({
+        'up': Phaser.Input.Keyboard.KeyCodes.W,
+        'down': Phaser.Input.Keyboard.KeyCodes.S,
+        'left': Phaser.Input.Keyboard.KeyCodes.A,
+        'right': Phaser.Input.Keyboard.KeyCodes.D
+    });
+
+
+    // Eventos de teclado para el primer jugador
+    this.input.keyboard.on('keydown_LEFT', function (event) {
+        player.setVelocityX(-160);
+        player.anims.play('left', true);
+    });
+
+    this.input.keyboard.on('keydown_RIGHT', function (event) {
+        player.setVelocityX(160);
+        player.anims.play('right', true);
+    });
+
+    this.input.keyboard.on('keyup_LEFT RIGHT', function (event) {
+        if (!cursors.left.isDown && !cursors.right.isDown) {
+            player.setVelocityX(0);
+            if (player.body.touching.down) {
+                player.anims.play('turn');
+            }
+        }
+    });
+
+    // Eventos de teclado para el segundo jugador
+    this.input.keyboard.on('keydown_A', function (event) {
+        player2.setVelocityX(-160);
+        player2.anims.play('left', true);
+    });
+
+    this.input.keyboard.on('keydown_D', function (event) {
+        player2.setVelocityX(160);
+        player2.anims.play('right', true);
+    });
+
+   
+
+    this.input.keyboard.on('keyup_A D', function (event) {
+        if (!cursors2.left.isDown && !cursors2.right.isDown) {
+            player2.setVelocityX(0);
+            if (player2.body.touching.down) {
+                player2.anims.play('down');
+            }
+        }
+    });
+
+    this.input.keyboard.on('keyup_S D', function (event) {
+        if (!cursors2.left.isDown && !cursors2.right.isDown) {
+            player2.setVelocityX(0);
+            if (player2.body.touching.down) {
+                player2.anims.play('down');
+            }
+        }
+    });
+
+  // Crea la cámara principal y la establece para que siga al primer jugador
+  
+this.cameras.main.startFollow(player,player2);
+// Crea cámaras adicionales
+const cam2 = this.cameras.add(-325, 0, 1850, 1030);
+
+
+// Establece que las cámaras adicionales sigan a los jugadores correspondientes
+cam2.startFollow(player, false, 0.5, 0.5);
+
+
+
+
+    // Some stars to collect, 12 in total, evenly spaced 70 pixels apart along the x-axis
+    stars = this.physics.add.group({
+        key: 'star',
+        repeat: 17,
+        setXY: { x: 16, y: 0, stepX: 70 }
+    });
+
+    stars.children.iterate(function (child) {
+
+        // Give each star a slightly different bounce
+        child.setBounceY(Phaser.Math.FloatBetween(0.4, 0.8));
+
+    });
+
+    bombs = this.physics.add.group();
+
+    // The score
+    scoreText = this.add.text(16, 16, 'score: 720', { fontSize: '32px', fill: '#000' });
+
+    // Collide the player and the stars with the platforms
+    this.physics.add.collider(player, platforms);
+    this.physics.add.collider(player2, platforms);
+    this.physics.add.collider(stars, platforms);
+    this.physics.add.collider(bombs, platforms);
+
+    // Checks to see if the player overlaps with any of the stars, if he does call the collectStar function
+    this.physics.add.overlap(player, stars, collectStar, null, this);
+
+    this.physics.add.collider(player, bombs, hitBomb, null, this);
+
+    this.physics.add.overlap(player2, stars, collectStar, null, this);
+
+this.physics.add.collider(player2, bombs, hitBomb, null, this);
+
+     // Temporizador en la parte superior derecha de la pantalla
+     timerText = this.add.text(1100, 16, 'Time: 00:00:00', {
+        fontSize: '20px',
+        fill: '#fff',
+        backgroundColor: '#000',
+        padding: {
+            x: 5,
+            y: 5
+        }
+    });
+
+    timeElapsed = sessionStorage.getItem('timeElapsed') ? parseInt(sessionStorage.getItem('timeElapsed')) : 0;
+
+// ...
+
+// Temporizador para contar el tiempo transcurrido en milisegundos
+timerEvent = this.time.addEvent({
+    delay: 1000,
+    loop: true,
+    callback: updateTimer,
+    callbackScope: this
+});
+
+
+
+
+}
+
+
+
+function updateTimer() {
+    timeElapsed += 1;
+    sessionStorage.setItem('timeElapsed', timeElapsed); // Guarda el tiempo en sessionStorage
+
+    var hours = Math.floor(timeElapsed / 3600);
+    var minutes = Math.floor((timeElapsed % 3600) / 60);
+    var seconds = timeElapsed % 60;
+
+    var formattedTime =
+        (hours.toString().padStart(2, '0')) + ':' +
+        (minutes.toString().padStart(2, '0')) + ':' +
+        (seconds.toString().padStart(2, '0'));
+
+    timerText.setText('Time: ' + formattedTime);
+}
+
+function update() {
+    if (gameOver) {
+        return;
+    }
+
+   
+   
+
+    if (cursors.left.isDown) {
+      
+        player.setVelocityX(-160);
+        player.anims.play('left', true);
+    } else if (cursors.right.isDown) {
+        player.setVelocityX(160);
+        player.anims.play('right', true);
+    } else {
+        player.setVelocityX(0);
+        player.anims.play('turn');
+    }
+
+    
+    if (player.body.touching.down) {
+       
+        if (cursors.up.isDown) {
+            player.setVelocityY(-330);
+        }
+    } else {
+       
+        if (cursors.down.isDown) {
+            player.setVelocityY(330);
+     
+   
+          }
+          
+    }
+    
+
+    
+    update2();
+
+    if (score >= 900 && level === 1) {
+        console.log("Changing background to level 2...");
+        level = 2;
+        
+   
+    
+  db.collection("Puntuación").add({
+      Puntos: score,
+      
+  })
+  .then((docRef) => {
+      alert('NicknameGuardado')
+      window.location.href = "creditos.html";
+  })
+  .catch((error) => {
+      alert('Error al guardar')
+  });
+  
+
+    
+    
+       
+ 
+        
+        }
+
+       
+    
+}
+
+function update2() {
+ 
+
+    if (gameOver) {
+        return;
+    }
+    
+    
+ // Movimiento del segundo jugador
+ if (cursors2.left.isDown) {
+        player2.setVelocityX(-160);
+        player2.anims.play('left2', true); // Usar animación 'left2' del segundo jugador
+    } else if (cursors2.right.isDown) {
+        player2.setVelocityX(160);
+        player2.anims.play('right2', true); // Usar animación 'right2' del segundo jugador
+    } else {
+        player2.setVelocityX(0);
+        if (player2.body.touching.down) {
+            player2.anims.play('turn2'); // Usar animación 'turn2' del segundo jugador
+        }
+    }
+    
+
+    if (player2.body.touching.down && cursors2.up.isDown) {
+        player2.setVelocityY(-330);
+    }
+    
+    
+    
+}
+
+
+
+
+function collectStar(player, star) {
+    star.disableBody(true, true);
+
+    // Add and update the score
+    score += 10;
+    scoreText.setText('Score: ' + score);
+
+
+    if (stars.countActive(true) === 0) {
+        stars.children.iterate(function (child) {
+            child.enableBody(true, child.x, 0, true, true);
+        });
+
+        var x = (player.x < 400) ? Phaser.Math.Between(400, 800) : Phaser.Math.Between(0, 400);
+        var bomb = bombs.create(x, 16, 'bomb');
+        bomb.setBounce(1);
+        bomb.setCollideWorldBounds(true);
+        bomb.setVelocity(Phaser.Math.Between(-200, 200), 20);
+        bomb.allowGravity = false;
+    }
+    
+}
+
+
+function hitBomb(player, bomb)
+{
+    this.physics.pause();
+
+    player.setTint(0xff0000);
+    player.anims.play('turn');
+    
+         
+    gameOver = true;
+}
+
+
+
+
+</script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+  <script src="js/script.js"></script>
+  <script src="js/firebase.js"></script>
+</body>
+</html>
